@@ -1,0 +1,31 @@
+{
+  "name": "nest-back",
+  "version": "1.0.0",
+  "description": "MERN Ecommerce App",
+  "main": "app.js",
+  "scripts": {
+    "start": "nodemon app"
+  },
+  "keywords": [
+    "express",
+    "node",
+    "mongoose",
+    "mongodb",
+    "MERN",
+    "e-commerce"
+  ],
+  "author": "Tarek Medhat",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
+    "http-status-codes": "^2.2.0",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^6.6.3",
+    "nodemailer": "^6.9.1",
+    "nodemon": "^2.0.22"
+  }
+}
