@@ -3,7 +3,8 @@ const {
   getAllCategories,
   updatedCategory,
   deleteCategory,
-} = require("../controller/Category");
+} = require("../controller/category");
+
 const {
   Authentication,
   authorizedPermissions,
