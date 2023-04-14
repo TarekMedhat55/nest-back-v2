@@ -8,5 +8,12 @@ const CategorySchema = new mongoose.Schema({
   },
   image: String,
 });
-
+//findOne findAll update
+CategorySchema.post("init", function (doc) {
+  //return image base url + image image
+  if (doc.image) {
+    const ImageUrl = `${process.env.BASE_URL}/categories/${doc.image}`;
+    doc.image = ImageUrl;
+  }
+});
 module.exports = mongoose.model("Category", CategorySchema);

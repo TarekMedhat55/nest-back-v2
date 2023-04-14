@@ -2,7 +2,64 @@ const BadRequestError = require("../error/BadRequestError");
 const Product = require("../model/Product");
 const { StatusCodes } = require("http-status-codes");
 const NotFoundError = require("../error/NotFoundError");
+const multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
+const sharp = require("sharp");
 
+//upload image
+const multerStorage = multer.memoryStorage();
+const multerFilter = function (req, file, callBack) {
+  if (file.mimetype.startsWith("image")) {
+    callBack(null, true);
+  } else {
+    callBack(new BadRequestError("only images allowed"), false);
+  }
+};
+const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
+const uploadImage = upload.fields([
+  {
+    name: "imageCover",
+    maxCount: 1,
+  },
+  {
+    name: "images",
+    maxCount: 5,
+  },
+]);
+const resizeProductImages = async function (req, res, next) {
+  const imagesCoverName = `product-${uuidv4()}-${Date.now()}.jpeg`;
+  await sharp(req.files.imageCover[0].buffer)
+    .resize({
+      width: 400,
+      height: 400,
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    })
+    .toFormat("jpeg")
+    .toFile(`uploads/products/${imagesCoverName}`);
+  req.body.imageCover = imagesCoverName;
+  if (req.files.images) {
+    req.body.images = [];
+    //added Promise because we use async but map not a async
+    await Promise.all(
+      req.files.images.map(async (img, index) => {
+        const imagesName = `product-${uuidv4()}-${Date.now()}-${
+          index + 1
+        }.jpeg`;
+        await sharp(img.buffer)
+          .resize({
+            width: 400,
+            height: 400,
+            background: { r: 255, g: 255, b: 255, alpha: 0 },
+          })
+          .toFormat("jpeg")
+          .toFile(`uploads/products/${imagesName}`);
+        //save image is database
+        req.body.images.push(imagesName);
+      })
+    );
+    next();
+  }
+};
 const createProduct = async (req, res) => {
   const { name, price, sizes, quantity, category } = req.body;
   if (!name || !price || !sizes || !quantity || !category) {

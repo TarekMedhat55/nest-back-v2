@@ -18,6 +18,7 @@ const compareRouter = require("./router/compare");
 const cartRouter = require("./router/cart");
 const couponRouter = require("./router/coupon");
 const orderRouter = require("./router/order");
+const path = require("path");
 
 app.use(express.json());
 app.use(cookieParser(process.env.SECRET_KEY));
@@ -33,6 +34,7 @@ app.use("/api/compare", compareRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/coupons", couponRouter);
 app.use("/api/orders", orderRouter);
+app.use(express.static(path.join(__dirname, "uploads")));
 
 app.use(NotFoundMiddleware);
 app.use(ErrorHandlerMiddleware);

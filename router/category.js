@@ -3,6 +3,8 @@ const {
   getAllCategories,
   updatedCategory,
   deleteCategory,
+  uploadCategoryImage,
+  resizeImage,
 } = require("../controller/category");
 
 const {
@@ -16,6 +18,8 @@ router.post(
   "/create-category",
   Authentication,
   authorizedPermissions("admin", "vendor"),
+  uploadCategoryImage,
+  resizeImage,
   createCategory
 );
 router.get("/", getAllCategories);

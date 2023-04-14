@@ -2,7 +2,41 @@ const { StatusCodes } = require("http-status-codes");
 const BadRequestError = require("../error/BadRequestError");
 const Category = require("../model/Category");
 const NotFoundError = require("../error/NotFoundError");
+const multer = require("multer");
+const sharp = require("sharp");
+const { v4: uuidv4 } = require("uuid");
 
+//upload image
+//we will use memory storage to save it in buffer
+const multerStorage = multer.memoryStorage();
+//filter images to upload images only
+const multerFilter = function (req, file, callBack) {
+  //file=>mimetype:image/jpeg
+  if (file.mimetype.startsWith("image")) {
+    //no error
+    callBack(null, true);
+  } else {
+    callBack(new BadRequestError("only images allowed"), false);
+  }
+};
+const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
+const uploadCategoryImage = upload.single("image");
+//sharp image
+const resizeImage = async (req, res, next) => {
+  const imagesName = `category-${uuidv4()}-${Date.now()}.jpeg`;
+  //console.log(sharp);
+  await sharp(req.file.buffer)
+    .resize({
+      width: 400,
+      height: 400,
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    })
+    .toFormat("jpeg")
+    .toFile(`uploads/categories/${imagesName}`); //to file to save it
+  //save image name in database
+  req.body.image = imagesName;
+  next();
+};
 const createCategory = async (req, res) => {
   const { name } = req.body;
   if (!name) {
@@ -53,4 +87,6 @@ module.exports = {
   getAllCategories,
   updatedCategory,
   deleteCategory,
+  uploadCategoryImage,
+  resizeImage,
 };
