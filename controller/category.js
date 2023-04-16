@@ -5,38 +5,13 @@ const NotFoundError = require("../error/NotFoundError");
 const multer = require("multer");
 const sharp = require("sharp");
 const { v4: uuidv4 } = require("uuid");
+const path = require("path");
+const {
+  cloudinaryUploadImage,
+  cloudinaryRemoveImage,
+} = require("../middleware/cloudinary");
+const fs = require("fs");
 
-//upload image
-//we will use memory storage to save it in buffer
-const multerStorage = multer.memoryStorage();
-//filter images to upload images only
-const multerFilter = function (req, file, callBack) {
-  //file=>mimetype:image/jpeg
-  if (file.mimetype.startsWith("image")) {
-    //no error
-    callBack(null, true);
-  } else {
-    callBack(new BadRequestError("only images allowed"), false);
-  }
-};
-const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
-const uploadCategoryImage = upload.single("image");
-//sharp image
-const resizeImage = async (req, res, next) => {
-  const imagesName = `category-${uuidv4()}-${Date.now()}.jpeg`;
-  //console.log(sharp);
-  await sharp(req.file.buffer)
-    .resize({
-      width: 400,
-      height: 400,
-      background: { r: 255, g: 255, b: 255, alpha: 0 },
-    })
-    .toFormat("jpeg")
-    .toFile(`uploads/categories/${imagesName}`); //to file to save it
-  //save image name in database
-  req.body.image = imagesName;
-  next();
-};
 const createCategory = async (req, res) => {
   const { name } = req.body;
   if (!name) {
@@ -47,10 +22,32 @@ const createCategory = async (req, res) => {
   if (category) {
     throw new BadRequestError("category is exist");
   }
-  await Category.create(req.body);
-  res
-    .status(StatusCodes.CREATED)
-    .json({ msg: "category created successfully" });
+
+  const imagesName = `category-${uuidv4()}-${Date.now()}.jpeg`;
+  if (!req.file) {
+    throw new BadRequestError("no file provided");
+  }
+  //console.log(sharp);
+  await sharp(req.file.buffer)
+    .resize({
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    })
+    .toFormat("jpeg")
+    .toFile(`uploads/categories/${imagesName}`); //to file to save it
+  const imagePath = path.join(__dirname, `../uploads/categories/${imagesName}`);
+  //upload image to cloudinary
+  const result = await cloudinaryUploadImage(imagePath);
+
+  await Category.create({
+    name,
+    image: { url: result.url, publicId: result.public_id },
+  });
+  res.status(StatusCodes.CREATED).json({
+    msg: "category created successfully",
+    photo: { url: result.url, publicId: result.public_id },
+  });
+  //delete image from server after upload it
+  fs.unlinkSync(imagePath);
 };
 const getAllCategories = async (req, res) => {
   const page = req.query.page || 1;
@@ -64,18 +61,43 @@ const getAllCategories = async (req, res) => {
 };
 const updatedCategory = async (req, res) => {
   const { id } = req.params;
-  //check category
-  const category = await Category.findByIdAndUpdate(id, req.body, {
-    new: true,
-  });
-  if (!category) {
-    throw new NotFoundError("this category not exist");
+  const { name } = req.body;
+  if (req.file) {
+    const category = await Category.findById(id);
+    //delete old image
+    await cloudinaryRemoveImage(category.image.publicId);
+    //
+    const imagesName = `category-${uuidv4()}-${Date.now()}.jpeg`;
+    //console.log(sharp);
+    await sharp(req.file.buffer)
+      .resize({
+        background: { r: 255, g: 255, b: 255, alpha: 0 },
+      })
+      .toFormat("jpeg")
+      .toFile(`uploads/categories/${imagesName}`); //to file to save it
+    const imagePath = path.join(
+      __dirname,
+      `../uploads/categories/${imagesName}`
+    );
+    //upload image to cloudinary
+    const result = await cloudinaryUploadImage(imagePath);
+    await Category.findByIdAndUpdate(
+      id,
+      { name, image: { url: result.url, publicId: result.public_id } },
+      { new: true }
+    );
+    res.status(StatusCodes.OK).json({ msg: "category updated successfully" });
+    //delete image from server after upload it
+    fs.unlinkSync(imagePath);
+    return;
   }
+  await Category.findByIdAndUpdate(id, req.body, { new: true });
   res.status(StatusCodes.OK).json({ msg: "category updated successfully" });
 };
 const deleteCategory = async (req, res) => {
   const { id } = req.params;
   const category = await Category.findByIdAndDelete(id);
+  await cloudinaryRemoveImage(category.image.publicId);
   if (!category) {
     throw new NotFoundError("this category not exist");
   }
@@ -87,6 +109,4 @@ module.exports = {
   getAllCategories,
   updatedCategory,
   deleteCategory,
-  uploadCategoryImage,
-  resizeImage,
 };

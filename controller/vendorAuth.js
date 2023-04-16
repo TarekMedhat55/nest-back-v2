@@ -6,7 +6,6 @@ const { createCookie } = require("../utils/jwt");
 const { StatusCodes } = require("http-status-codes");
 const UnAuthentication = require("../error/UnAuthentication");
 const { sendEmail } = require("../utils/SendEmail");
-const { log } = require("console");
 const vendorRegister = async (req, res) => {
   const { companyName, firstName, lastName, email, password, phoneNumber } =
     req.body;
@@ -93,7 +92,7 @@ const vendorLogin = async (req, res) => {
   if (tokenExist) {
     refreshToken = tokenExist.refreshToken;
     //create cookies
-    createCookie({ res, user: vendorTokenItem });
+    createCookie({ res, user: vendorTokenItem, refreshToken });
     res.status(StatusCodes.OK).json({ vendor: vendorInfo });
     return;
   }

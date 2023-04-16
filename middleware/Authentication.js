@@ -18,8 +18,17 @@ const Authentication = async (req, res, next) => {
       refreshToken: payload.refreshToken,
       user: payload.user.userId,
     });
+    ///vendor token
+    const vendorExistToken = await UserToken.findOne({
+      refreshToken: payload.refreshToken,
+      user: payload.user.vendorId,
+    });
     //if there is no refreshToken
     if (!existToken) {
+      throw new UnAuthentication("authentication invalid,please login");
+    }
+     //if there is no refreshToken
+     if (!vendorExistToken) {
       throw new UnAuthentication("authentication invalid,please login");
     }
     //if there is a refreshToken create cookies

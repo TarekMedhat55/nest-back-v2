@@ -6,14 +6,13 @@ const CategorySchema = new mongoose.Schema({
     required: [true, "category name is required"],
     unique: true,
   },
-  image: String,
+  image: {
+    type: Object,
+    default: {
+      url: "",
+      publicId: null,
+    },
+  },
 });
-//findOne findAll update
-CategorySchema.post("init", function (doc) {
-  //return image base url + image image
-  if (doc.image) {
-    const ImageUrl = `${process.env.BASE_URL}/categories/${doc.image}`;
-    doc.image = ImageUrl;
-  }
-});
+
 module.exports = mongoose.model("Category", CategorySchema);

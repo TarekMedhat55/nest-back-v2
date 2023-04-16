@@ -5,69 +5,42 @@ const NotFoundError = require("../error/NotFoundError");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const sharp = require("sharp");
+const path = require("path");
+const { cloudinaryUploadImage } = require("../middleware/cloudinary");
+const fs = require("fs");
 
-//upload image
-const multerStorage = multer.memoryStorage();
-const multerFilter = function (req, file, callBack) {
-  if (file.mimetype.startsWith("image")) {
-    callBack(null, true);
-  } else {
-    callBack(new BadRequestError("only images allowed"), false);
-  }
-};
-const upload = multer({ storage: multerStorage, fileFilter: multerFilter });
-const uploadImage = upload.fields([
-  {
-    name: "imageCover",
-    maxCount: 1,
-  },
-  {
-    name: "images",
-    maxCount: 5,
-  },
-]);
-const resizeProductImages = async function (req, res, next) {
-  const imagesCoverName = `product-${uuidv4()}-${Date.now()}.jpeg`;
-  await sharp(req.files.imageCover[0].buffer)
-    .resize({
-      width: 400,
-      height: 400,
-      background: { r: 255, g: 255, b: 255, alpha: 0 },
-    })
-    .toFormat("jpeg")
-    .toFile(`uploads/products/${imagesCoverName}`);
-  req.body.imageCover = imagesCoverName;
-  if (req.files.images) {
-    req.body.images = [];
-    //added Promise because we use async but map not a async
-    await Promise.all(
-      req.files.images.map(async (img, index) => {
-        const imagesName = `product-${uuidv4()}-${Date.now()}-${
-          index + 1
-        }.jpeg`;
-        await sharp(img.buffer)
-          .resize({
-            width: 400,
-            height: 400,
-            background: { r: 255, g: 255, b: 255, alpha: 0 },
-          })
-          .toFormat("jpeg")
-          .toFile(`uploads/products/${imagesName}`);
-        //save image is database
-        req.body.images.push(imagesName);
-      })
-    );
-    next();
-  }
-};
 const createProduct = async (req, res) => {
-  const { name, price, sizes, quantity, category } = req.body;
-  if (!name || !price || !sizes || !quantity || !category) {
+  const { name, price, quantity } = req.body;
+  if (!name || !price) {
     throw new BadRequestError("all fields are required");
   }
   req.body.vendor = req.user.vendorId;
-  await Product.create(req.body);
+
+  const imagesName = `product-${uuidv4()}-${Date.now()}.jpeg`;
+  if (!req.file) {
+    throw new BadRequestError("no file provided");
+  }
+  //console.log(sharp);
+  await sharp(req.file.buffer)
+    .resize({
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    })
+    .toFormat("jpeg")
+    .toFile(`uploads/products/${imagesName}`); //to file to save it
+  const imagePath = path.join(__dirname, `../uploads/products/${imagesName}`);
+  //upload image to cloudinary
+  const result = await cloudinaryUploadImage(imagePath);
+
+  //end image cover
+  await Product.create({
+    name,
+    price,
+    quantity,
+    imageCover: { url: result.url, publicId: result.public_id },
+  });
   res.status(StatusCodes.CREATED).json({ msg: "product created successfully" });
+  //delete image from server after upload it
+  fs.unlinkSync(imagePath);
 };
 //get popular products
 const popularProducts = async (req, res) => {

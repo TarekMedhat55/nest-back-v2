@@ -13,6 +13,7 @@ const {
   Authentication,
   authorizedPermissions,
 } = require("../middleware/Authentication");
+const { uploadSingleImage } = require("../middleware/uploadImage");
 
 const router = require("express").Router();
 const reviewRouter = require("./review");
@@ -20,6 +21,7 @@ router.post(
   "/create-product",
   Authentication,
   authorizedPermissions("vendor"),
+  uploadSingleImage,
   createProduct
 );
 router.use("/:productId/reviews", reviewRouter);

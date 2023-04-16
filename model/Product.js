@@ -18,6 +18,7 @@ const ProductSchema = new mongoose.Schema(
     },
     quantity: {
       type: Number,
+      default: 1,
       required: [true, "product quantity is required"],
     },
     sold: {
@@ -26,9 +27,12 @@ const ProductSchema = new mongoose.Schema(
     },
     sizes: [Number],
     imageCover: {
-      type: String,
+      type: Object,
+      default: {
+        url: "",
+        publicId: String,
+      },
     },
-    images: [String],
     category: {
       type: mongoose.Types.ObjectId,
       ref: "Category",
@@ -68,18 +72,5 @@ ProductSchema.pre(/^find/, async function (next) {
   this.populate({ path: "vendor", select: "companyName" });
   next();
 });
-ProductSchema.post("init", function (doc) {
-  if (doc.imageCover) {
-    const imageUrl = `${process.env.BASE_URL}/products/${doc.imageCover}`;
-    doc.imageCover = imageUrl;
-  }
-  if (doc.images) {
-    const imagesList = [];
-    doc.images.forEach((image) => {
-      const imageUrl = `${process.env.BASE_URL}/products/${image}`;
-      imagesList.push(imageUrl);
-    });
-    doc.images = imagesList;
-  }
-});
+
 module.exports = mongoose.model("Product", ProductSchema);
